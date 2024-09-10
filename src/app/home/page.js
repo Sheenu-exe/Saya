@@ -145,7 +145,7 @@ const MainPage = () => {
           <button className="bg-blue-500 text-white py-2 px-4 rounded mb-2 sm:mb-0 sm:mr-2" onClick={fetchFolders}>
             Refresh
           </button>
-          <button className="bg-purple-500 text-white py-2 px-4 rounded" onClick={() => setShowSearchPopup(true)}>
+          <button className="bg-purple-500 text-white mb-2 py-2 px-4 rounded" onClick={() => setShowSearchPopup(true)}>
             Search All Folders
           </button>
         </div>

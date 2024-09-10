@@ -6,7 +6,7 @@
 
 @font-face {
   font-family: Auliare;
-  src: url('./fonts/Auliare.otf');
+  src: url('./fonts/Gilroy-Regular.ttf');
 }
 body {
   color: var(--foreground);

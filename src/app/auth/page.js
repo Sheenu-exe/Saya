@@ -34,7 +34,7 @@ const cookie = new Cookies()
 
   return (
     <div className="h-screen w-full bg-zinc-900 flex justify-center items-center">
-      <div className="relative p-8 rounded-lg shadow-lg w-[40%] bg-zinc-800">
+      <div className="relative p-8 rounded-lg shadow-lg sm:w-[40%] w-[80%] bg-zinc-800">
         <div className="absolute top-0 left-0 right-0 p-2 flex justify-center">
           <button
             className={`p-2 w-1/2 rounded-t-lg ${!isSignUp ? 'bg-zinc-700' : 'bg-zinc-800 text-gray-400'}`}
