@@ -1,11 +1,11 @@
 'use client'
 import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, where, addDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
-import { firestore } from "../firebase.config";
+import { auth, firestore } from "../firebase.config";
 import UploadPopup from "../components/uploadPopup";
 import SearchPopup from "../components/searchPopup";
-import { auth } from "../firebase.config";
 import '../globals.css'
+
 const MainPage = () => {
   const [folders, setFolders] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
@@ -130,25 +130,25 @@ const MainPage = () => {
   const filteredFolders = folders.filter((folder) => folder.name.toLowerCase().includes(searchTerm));
 
   return (
-    <div className="bg-[#E4EFE7] min-h-screen w-full p-8">
-      <h2 className="text-2xl mb-6">All Folders</h2>
+    <div className="bg-gray-50 min-h-screen w-full p-8">
+      <h2 className="text-2xl mb-6 font-semibold">My Drive</h2>
       <div className="flex justify-between mb-6">
-        <div className="flex items-center">
+        <div className="flex items-center space-x-4">
           <input
             type="text"
             placeholder="Search folders"
-            className="border p-2 mr-2"
+            className="border border-gray-300 p-2 rounded-md w-80"
             onChange={handleSearch}
             value={searchTerm}
           />
-          <button className="bg-blue-500 text-white py-2 px-4 rounded mr-2" onClick={fetchFolders}>
+          <button className="bg-blue-500 text-white py-2 px-4 rounded-md" onClick={fetchFolders}>
             Refresh
           </button>
-          <button className="bg-purple-500 text-white py-2 px-4 rounded" onClick={() => setShowSearchPopup(true)}>
+          <button className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md" onClick={() => setShowSearchPopup(true)}>
             Search All Folders
           </button>
         </div>
-        <button onClick={() => setShowPopup(true)} className="bg-green-500 text-white py-2 px-4 rounded">
+        <button onClick={() => setShowPopup(true)} className="bg-green-500 text-white py-2 px-4 rounded-md">
           Upload Photos
         </button>
       </div>
@@ -159,7 +159,7 @@ const MainPage = () => {
         {filteredFolders.map((folder) => (
           <div
             key={folder.id}
-            className="cursor-pointer bg-white shadow-md p-4 rounded"
+            className="cursor-pointer bg-white shadow-md p-4 rounded-md hover:bg-gray-100"
             onClick={() => handleFolderClick(folder)}
           >
             <img
@@ -167,28 +167,28 @@ const MainPage = () => {
               alt="folder icon"
               className="w-16 h-16 mx-auto mb-2"
             />
-            <p className="text-center">{folder.name}</p>
-            {folder.isOwner && <p className="text-xs text-center text-gray-500">Owner</p>}
-            {!folder.isOwner && <p className="text-xs text-center text-gray-500">Shared</p>}
+            <p className="text-center font-medium">{folder.name}</p>
+            {folder.isOwner && <p className="text-xs text-center text-gray-600">Owner</p>}
+            {!folder.isOwner && <p className="text-xs text-center text-gray-600">Shared</p>}
           </div>
         ))}
       </div>
 
       {selectedFolder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded shadow-lg relative">
+          <div className="bg-white p-6 rounded-md shadow-lg relative max-w-md w-full">
             <button onClick={closePasscodePopup} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
               ✕
             </button>
-            <h2 className="text-xl mb-4">Enter Passcode for {selectedFolder.name}</h2>
+            <h2 className="text-xl mb-4 font-semibold">Enter Passcode for {selectedFolder.name}</h2>
             <input
               type="password"
-              className="border p-2 mb-4 w-full"
+              className="border border-gray-300 p-2 mb-4 w-full rounded-md"
               placeholder="Passcode"
               value={enteredPasscode}
               onChange={(e) => setEnteredPasscode(e.target.value)}
             />
-            <button onClick={handlePasscodeSubmit} className="bg-green-500 text-white py-2 px-4 rounded">
+            <button onClick={handlePasscodeSubmit} className="bg-blue-500 text-white py-2 px-4 rounded-md">
               Submit
             </button>
             {error && <p className="text-red-500 mt-2">{error}</p>}
@@ -198,14 +198,19 @@ const MainPage = () => {
 
       {showImages && selectedFolder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded shadow-lg relative max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white p-6 rounded-md shadow-lg relative max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <button onClick={closeImagesPopup} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
               ✕
             </button>
-            <h2 className="text-xl mb-4">{selectedFolder.name} - Images</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <h2 className="text-xl mb-4 font-semibold">{selectedFolder.name} - Images</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {selectedFolder.photos.map((photo, index) => (
-                <img key={index} src={photo} alt={`Photo ${index + 1}`} className="w-full h-auto rounded shadow" />
+                <img
+                  key={index}
+                  src={photo}
+                  alt={`Photo ${index + 1}`}
+                  className="w-full h-auto rounded-md shadow-md"
+                />
               ))}
             </div>
           </div>
@@ -224,3 +229,4 @@ const MainPage = () => {
 };
 
 export default MainPage;
+

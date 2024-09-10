@@ -153,7 +153,7 @@ const UploadPopup = ({ setShowPopup, addFolder }) => {
           >
             {uploading ? (
               <div className="flex items-center justify-center">
-                <ThreeDots type="ThreeDots" color="#00BFFF" height={80} width={80} />
+                <ThreeDots type="ThreeDots" color="#ffffff" height={80} width={80} />
                 <p className="ml-4">{uploadProgress}%</p>
               </div>
             ) : (
