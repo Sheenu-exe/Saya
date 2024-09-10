@@ -43,25 +43,25 @@ const UploadPopup = ({ setShowPopup, addFolder }) => {
       alert("Please select an existing folder or create a new one.");
       return;
     }
-  
+
     const folder = folderName || selectedFolder;
     const uploadedPhotos = [];
-  
+
     try {
       setUploading(true);
       setUploadProgress(0);
-  
+
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         const fileRef = ref(storage, `photos/${folder}/${photo.name}`);
-  
+
         const uploadTask = uploadBytesResumable(fileRef, photo);
-  
+
         uploadTask.on(
           "state_changed",
           (snapshot) => {
             const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            setUploadProgress(Math.round((i / photos.length) * 100 + progress / photos.length));
+            setUploadProgress(prevProgress => Math.round(((i / photos.length) * 100) + (progress / photos.length)));
           },
           (error) => {
             console.error("Error uploading photo:", error);
@@ -69,14 +69,14 @@ const UploadPopup = ({ setShowPopup, addFolder }) => {
             setUploading(false);
           }
         );
-  
+
         // Wait for upload to complete before proceeding
         await uploadTask;
-  
+
         const downloadURL = await getDownloadURL(fileRef);
         uploadedPhotos.push(downloadURL);
       }
-  
+
       const foldersCollection = collection(firestore, "folders");
       const folderDoc = doc(foldersCollection, folder);
       await setDoc(folderDoc, {
@@ -84,7 +84,7 @@ const UploadPopup = ({ setShowPopup, addFolder }) => {
         passcode: passcode,
         photos: uploadedPhotos,
       }, { merge: true });
-  
+
       addFolder(folder, uploadedPhotos, passcode);
       setShowPopup(false);
     } catch (error) {
@@ -94,73 +94,85 @@ const UploadPopup = ({ setShowPopup, addFolder }) => {
       setUploading(false);
     }
   };
+
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white p-6 rounded shadow-lg relative">
-        <button
-          onClick={() => setShowPopup(false)}
-          className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
-        >
-          ✕
-        </button>
-        <h2 className="text-xl mb-4">Upload Photos</h2>
-        <div>
-          <label className="block mb-2">Select Folder or Create New:</label>
-          <select
-            className="border p-2 mb-4 w-full"
-            value={selectedFolder}
-            onChange={(e) => setSelectedFolder(e.target.value)}
-            disabled={folderName}
-          >
-            <option value="">Select Existing Folder</option>
-            {existingFolders.map((folder, index) => (
-              <option key={index} value={folder}>
-                {folder}
-              </option>
-            ))}
-          </select>
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white p-6 rounded shadow-lg relative w-full h-full flex flex-col items-center justify-center">
+        {uploading ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 z-40">
+            <div className="flex flex-col items-center justify-center p-6 bg-white rounded shadow-lg">
+              <ThreeDots type="ThreeDots" color="#000000" height={80} width={80} />
+              <p className="text-lg mt-4">{uploadProgress}%</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              onClick={() => setShowPopup(false)}
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800"
+            >
+              ✕
+            </button>
+            <h2 className="text-xl mb-4">Upload Photos</h2>
+            <div className="w-full max-w-lg">
+              <label className="block mb-2">Select Folder or Create New:</label>
+              <select
+                className="border p-2 mb-4 w-full"
+                value={selectedFolder}
+                onChange={(e) => setSelectedFolder(e.target.value)}
+                disabled={folderName}
+              >
+                <option value="">Select Existing Folder</option>
+                {existingFolders.map((folder, index) => (
+                  <option key={index} value={folder}>
+                    {folder}
+                  </option>
+                ))}
+              </select>
 
-          <input
-            type="text"
-            className="border p-2 mb-4 w-full"
-            placeholder="Or create new folder"
-            value={folderName}
-            onChange={(e) => setFolderName(e.target.value)}
-            disabled={selectedFolder}
-          />
+              <input
+                type="text"
+                className="border p-2 mb-4 w-full"
+                placeholder="Or create new folder"
+                value={folderName}
+                onChange={(e) => setFolderName(e.target.value)}
+                disabled={selectedFolder}
+              />
 
-          <input
-            type="file"
-            multiple
-            className="mb-4"
-            onChange={handleFileChange}
-            accept="image/*"
-          />
+              <input
+                type="file"
+                multiple
+                className="mb-4"
+                onChange={handleFileChange}
+                accept="image/*"
+              />
 
-          {showPasscodeInput && (
-            <input
-              type="password"
-              className="border p-2 mb-4 w-full"
-              placeholder="Set a passcode for this folder"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-            />
-          )}
+              {showPasscodeInput && (
+                <input
+                  type="password"
+                  className="border p-2 mb-4 w-full"
+                  placeholder="Set a passcode for this folder"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                />
+              )}
 
-          <button
-            onClick={handleUpload}
-            className="bg-green-500 text-white py-2 px-4 rounded"
-          >
-            {uploading ? (
-              <div className="flex items-center justify-center">
-                <ThreeDots type="ThreeDots" color="#ffffff" height={80} width={80} />
-                <p className="ml-4">{uploadProgress}%</p>
-              </div>
-            ) : (
-              "Upload Photos"
-            )}
-          </button>
-        </div>
+              <button
+                onClick={handleUpload}
+                className="bg-green-500 text-white py-2 px-4 rounded w-full"
+              >
+                {uploading ? (
+                  <div className="flex items-center justify-center">
+                    <ThreeDots type="ThreeDots" color="#ffffff" height={20} width={20} />
+                    <p className="ml-2">{uploadProgress}%</p>
+                  </div>
+                ) : (
+                  "Upload Photos"
+                )}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
