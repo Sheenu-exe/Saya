@@ -1,8 +1,11 @@
+'use client'
 import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, where, addDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
 import { firestore } from "../firebase.config";
 import UploadPopup from "../components/uploadPopup";
+import SearchPopup from "../components/searchPopup";
 import { auth } from "../firebase.config";
+import '../globals.css'
 const MainPage = () => {
   const [folders, setFolders] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
@@ -11,27 +14,24 @@ const MainPage = () => {
   const [showImages, setShowImages] = useState(false);
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const currentUser = auth.currentUser
+  const [showSearchPopup, setShowSearchPopup] = useState(false);
+  const currentUser = auth.currentUser;
 
-  // Ensure currentUser exists before fetching folders
   useEffect(() => {
     if (currentUser) {
       fetchFolders();
     }
   }, [currentUser]);
 
-  // Fetch folders owned or shared with the current user
   const fetchFolders = async () => {
     try {
       const foldersCollection = collection(firestore, "folders");
 
-      // Queries for owned and shared folders
       const ownedQuery = query(foldersCollection, where("owner", "==", currentUser.email));
       const sharedQuery = query(foldersCollection, where("sharedWith", "array-contains", currentUser.email));
 
       const [ownedSnapshot, sharedSnapshot] = await Promise.all([getDocs(ownedQuery), getDocs(sharedQuery)]);
 
-      // Parsing data
       const ownedFolders = ownedSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -51,7 +51,6 @@ const MainPage = () => {
     }
   };
 
-  // Handle selecting a folder and opening passcode input
   const handleFolderClick = (folder) => {
     setSelectedFolder(folder);
     setShowImages(false);
@@ -59,7 +58,6 @@ const MainPage = () => {
     setError("");
   };
 
-  // Validate the passcode and show images
   const handlePasscodeSubmit = () => {
     if (enteredPasscode === selectedFolder.passcode) {
       setShowImages(true);
@@ -69,7 +67,6 @@ const MainPage = () => {
     }
   };
 
-  // Add a new folder
   const addFolder = async (folderName, photos, passcode) => {
     try {
       const foldersCollection = collection(firestore, "folders");
@@ -89,7 +86,6 @@ const MainPage = () => {
     }
   };
 
-  // Share a folder with another user
   const shareFolder = async (folderId, emailToShare) => {
     try {
       const folderRef = doc(firestore, "folders", folderId);
@@ -120,12 +116,17 @@ const MainPage = () => {
     setSelectedFolder(null);
   };
 
-  // Handle folder search functionality
   const handleSearch = (event) => {
     setSearchTerm(event.target.value.toLowerCase());
   };
 
-  // Filter folders based on search term
+  const handleSearchFolderSelect = (folder) => {
+    setSelectedFolder(folder);
+    setShowImages(false);
+    setEnteredPasscode("");
+    setError("");
+  };
+
   const filteredFolders = folders.filter((folder) => folder.name.toLowerCase().includes(searchTerm));
 
   return (
@@ -140,8 +141,11 @@ const MainPage = () => {
             onChange={handleSearch}
             value={searchTerm}
           />
-          <button className="bg-blue-500 text-white py-2 px-4 rounded" onClick={fetchFolders}>
+          <button className="bg-blue-500 text-white py-2 px-4 rounded mr-2" onClick={fetchFolders}>
             Refresh
+          </button>
+          <button className="bg-purple-500 text-white py-2 px-4 rounded" onClick={() => setShowSearchPopup(true)}>
+            Search All Folders
           </button>
         </div>
         <button onClick={() => setShowPopup(true)} className="bg-green-500 text-white py-2 px-4 rounded">
@@ -151,7 +155,6 @@ const MainPage = () => {
 
       {error && <p className="text-red-500 mb-4">{error}</p>}
 
-      {/* Folder Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredFolders.map((folder) => (
           <div
@@ -171,7 +174,6 @@ const MainPage = () => {
         ))}
       </div>
 
-      {/* Passcode Popup */}
       {selectedFolder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded shadow-lg relative">
@@ -194,7 +196,6 @@ const MainPage = () => {
         </div>
       )}
 
-      {/* Images Popup */}
       {showImages && selectedFolder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white p-6 rounded shadow-lg relative max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -212,6 +213,12 @@ const MainPage = () => {
       )}
 
       {showPopup && <UploadPopup setShowPopup={setShowPopup} addFolder={addFolder} />}
+
+      <SearchPopup
+        isOpen={showSearchPopup}
+        onClose={() => setShowSearchPopup(false)}
+        onFolderSelect={handleSearchFolderSelect}
+      />
     </div>
   );
 };

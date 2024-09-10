@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react';
-// import { useRouter } from 'next/navigation';
+
 import { auth } from '../firebase.config';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import Cookies from 'universal-cookie';
@@ -10,11 +10,11 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  // const router = useRouter(); // Initialize the router
+ 
 const cookie = new Cookies()
   const toggleAuthMode = () => {
     setIsSignUp((prev) => !prev);
-    setError(''); // Clear any previous error
+    setError('');
   };
 
   const handleAuth = async (e) => {
@@ -26,7 +26,7 @@ const cookie = new Cookies()
         await signInWithEmailAndPassword(auth, email, password);
       }
       cookie.set('isAuthenticated', true);
-      // router.push('/home'); // Navigate to the home page
+      
     } catch (err) {
       setError(err.message);
     }
