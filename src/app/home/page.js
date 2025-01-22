@@ -1,227 +1,343 @@
 'use client'
-import React, { useState, useEffect } from "react";
-import { collection, getDocs, query, where, addDoc, updateDoc, arrayUnion, doc } from "firebase/firestore";
-import { firestore } from "../firebase.config";
-import UploadPopup from "../components/uploadPopup";
-import SearchPopup from "../components/searchPopup";
-import { auth } from "../firebase.config";
-import '../globals.css'
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Lock, Upload, X, Eye, Folder, Plus, FolderOpen } from "lucide-react";
+import { onAuthStateChanged } from 'firebase/auth';
+import { collection, query, where, getDocs, addDoc, getDoc, doc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, firestore, storage } from '../firebase.config';
+import { useRouter } from 'next/navigation';
+import bcrypt from 'bcryptjs';
 
-const MainPage = () => {
+// Upload Dialog Component
+const UploadDialog = ({ isOpen, onClose, onUploadComplete, selectedFolder = null }) => {
+  const [files, setFiles] = useState([]);
+  const [passcode, setPasscode] = useState('');
+  const [folderName, setFolderName] = useState('');
+  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+
+  const verifyFolderPassword = async (folderId, password) => {
+    try {
+      const folderRef = doc(firestore, 'folders', folderId);
+      const folderDoc = await getDoc(folderRef);
+      
+      if (!folderDoc.exists()) {
+        return false;
+      }
+
+      const folderData = folderDoc.data();
+      return await bcrypt.compare(password, folderData.passwordHash);
+    } catch (error) {
+      console.error('Password verification error:', error);
+      throw new Error('Error verifying password');
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!files.length) {
+      setError('Please select files to upload');
+      return;
+    }
+
+    if (!selectedFolder && (!folderName || !passcode)) {
+      setError('Please provide folder name and passcode');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      let folderId = selectedFolder?.id;
+
+      if (!selectedFolder) {
+        // Create new folder
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(passcode, salt);
+
+        const folderData = {
+          name: folderName,
+          userId: auth.currentUser.uid,
+          photoCount: 0,
+          createdAt: new Date(),
+          passwordHash,
+        };
+
+        const folderRef = await addDoc(collection(firestore, 'folders'), folderData);
+        folderId = folderRef.id;
+      } else {
+        // Verify passcode for existing folder
+        const isPasswordCorrect = await verifyFolderPassword(selectedFolder.id, passcode);
+        if (!isPasswordCorrect) {
+          setError('Incorrect passcode');
+          setUploading(false);
+          return;
+        }
+      }
+
+      // Upload files
+      for (const file of files) {
+        const storageRef = ref(storage, `photos/${auth.currentUser.uid}/${folderId}/${file.name}`);
+        await uploadBytes(storageRef, file);
+        const photoUrl = await getDownloadURL(storageRef);
+
+        await addDoc(collection(firestore, 'photos'), {
+          folderId,
+          userId: auth.currentUser.uid,
+          url: photoUrl,
+          name: file.name,
+          timestamp: new Date()
+        });
+      }
+
+      // Update folder photo count
+      const folderRef = doc(firestore, 'folders', folderId);
+      const folderDoc = await getDoc(folderRef);
+      await updateDoc(folderRef, {
+        photoCount: (folderDoc.data().photoCount || 0) + files.length
+      });
+
+      onUploadComplete();
+      onClose();
+      setFiles([]);
+      setPasscode('');
+      setFolderName('');
+    } catch (error) {
+      console.error('Upload error:', error);
+      setError('Error uploading files');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {selectedFolder ? `Upload to ${selectedFolder.name}` : 'Create New Vault'}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <div>
+            <Input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => setFiles(Array.from(e.target.files))}
+              className="mt-1"
+            />
+          </div>
+
+          {files.length > 0 && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600 mb-2">Selected files:</p>
+              {files.map((file, index) => (
+                <div key={index} className="text-sm text-gray-700">{file.name}</div>
+              ))}
+            </div>
+          )}
+
+          {!selectedFolder && (
+            <Input
+              placeholder="New Folder Name"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+            />
+          )}
+
+          <Input
+            type="password"
+            placeholder={selectedFolder ? "Enter Folder Passcode" : "Set Folder Passcode"}
+            value={passcode}
+            onChange={(e) => setPasscode(e.target.value)}
+          />
+
+          <Button
+            onClick={handleUpload}
+            className="w-full bg-indigo-600 hover:bg-indigo-700"
+            disabled={uploading}
+          >
+            {uploading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Uploading...</span>
+              </div>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                {selectedFolder ? 'Upload to Folder' : 'Create Vault & Upload'}
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+// Main Component
+const PhotoVaultHome = () => {
   const [folders, setFolders] = useState([]);
-  const [showPopup, setShowPopup] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState(null);
-  const [enteredPasscode, setEnteredPasscode] = useState("");
-  const [showImages, setShowImages] = useState(false);
-  const [error, setError] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showSearchPopup, setShowSearchPopup] = useState(false);
-  const currentUser = auth.currentUser;
+  const router = useRouter();
 
   useEffect(() => {
-    if (currentUser) {
-      fetchFolders();
-    }
-  }, [currentUser]);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        fetchFolders(user.uid);
+      } else {
+        router.push('/auth/signIn');
+      }
+      setLoading(false);
+    });
 
-  const fetchFolders = async () => {
+    return () => unsubscribe();
+  }, [router]);
+
+  const fetchFolders = async (userId) => {
     try {
-      const foldersCollection = collection(firestore, "folders");
-
-      const ownedQuery = query(foldersCollection, where("owner", "==", currentUser.email));
-      const sharedQuery = query(foldersCollection, where("sharedWith", "array-contains", currentUser.email));
-
-      const [ownedSnapshot, sharedSnapshot] = await Promise.all([getDocs(ownedQuery), getDocs(sharedQuery)]);
-
-      const ownedFolders = ownedSnapshot.docs.map((doc) => ({
+      const foldersRef = collection(firestore, 'folders');
+      const q = query(foldersRef, where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      
+      const foldersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data(),
-        isOwner: true,
+        ...doc.data()
       }));
-
-      const sharedFolders = sharedSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        isOwner: false,
-      }));
-
-      setFolders([...ownedFolders, ...sharedFolders]);
+      
+      setFolders(foldersData);
+      setError('');
     } catch (error) {
-      console.error("Error fetching folders:", error);
-      setError("Failed to load folders. Please try again later.");
+      console.error('Error fetching folders:', error);
+      setError('Error fetching folders');
     }
   };
 
   const handleFolderClick = (folder) => {
-    setSelectedFolder(folder);
-    setShowImages(false);
-    setEnteredPasscode("");
-    setError("");
+    // Navigate to folder view or open folder dialog
+    router.push(`/folder/${folder.id}`);
   };
 
-  const handlePasscodeSubmit = () => {
-    if (enteredPasscode === selectedFolder.passcode) {
-      setShowImages(true);
-      setError("");
-    } else {
-      setError("Incorrect passcode, please try again.");
-    }
-  };
-
-  const addFolder = async (folderName, photos, passcode) => {
-    try {
-      const foldersCollection = collection(firestore, "folders");
-      const newFolder = {
-        name: folderName,
-        photos: photos,
-        passcode: passcode,
-        owner: currentUser.email,
-        sharedWith: [],
-      };
-      const docRef = await addDoc(foldersCollection, newFolder);
-      setFolders((prev) => [...prev, { id: docRef.id, ...newFolder, isOwner: true }]);
-      setShowPopup(false);
-    } catch (error) {
-      console.error("Error adding new folder:", error);
-      setError("Failed to add new folder. Please try again.");
-    }
-  };
-
-  const shareFolder = async (folderId, emailToShare) => {
-    try {
-      const folderRef = doc(firestore, "folders", folderId);
-      await updateDoc(folderRef, {
-        sharedWith: arrayUnion(emailToShare),
-      });
-      setFolders((prev) =>
-        prev.map((folder) =>
-          folder.id === folderId
-            ? { ...folder, sharedWith: [...(folder.sharedWith || []), emailToShare] }
-            : folder
-        )
-      );
-    } catch (error) {
-      console.error("Error sharing folder:", error);
-      setError("Failed to share folder. Please try again.");
-    }
-  };
-
-  const closePasscodePopup = () => {
+  const handleNewVault = () => {
     setSelectedFolder(null);
-    setEnteredPasscode("");
-    setError("");
+    setShowUploadDialog(true);
   };
 
-  const closeImagesPopup = () => {
-    setShowImages(false);
-    setSelectedFolder(null);
-  };
-
-  const handleSearch = (event) => {
-    setSearchTerm(event.target.value.toLowerCase());
-  };
-
-  const handleSearchFolderSelect = (folder) => {
+  const handleAddToFolder = (folder) => {
     setSelectedFolder(folder);
-    setShowImages(false);
-    setEnteredPasscode("");
-    setError("");
+    setShowUploadDialog(true);
   };
 
-  const filteredFolders = folders.filter((folder) => folder.name.toLowerCase().includes(searchTerm));
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-700">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-[#E4EFE7] min-h-screen w-full p-4 sm:p-8">
-      <h2 className="text-xl sm:text-2xl mb-4 sm:mb-6">All Folders</h2>
-      <div className="flex flex-col sm:flex-row justify-between mb-4 sm:mb-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center">
-          <input
-            type="text"
-            placeholder="Search folders"
-            className="border p-2 mb-2 sm:mb-0 sm:mr-2 w-full sm:w-auto"
-            onChange={handleSearch}
-            value={searchTerm}
-          />
-          <button className="bg-blue-500 text-white py-2 px-4 rounded mb-2 sm:mb-0 sm:mr-2" onClick={fetchFolders}>
-            Refresh
-          </button>
-          <button className="bg-purple-500 text-white mb-2 py-2 px-4 rounded" onClick={() => setShowSearchPopup(true)}>
-            Search All Folders
-          </button>
-        </div>
-        <button onClick={() => setShowPopup(true)} className="bg-green-500 text-white py-2 px-4 rounded">
-          Upload Photos
-        </button>
-      </div>
-
-      {error && <p className="text-red-500 mb-4">{error}</p>}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {filteredFolders.map((folder) => (
-          <div
-            key={folder.id}
-            className="cursor-pointer bg-white shadow-md p-4 rounded"
-            onClick={() => handleFolderClick(folder)}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-3">
+            <Lock className="w-8 h-8 text-indigo-600" />
+            <h1 className="text-2xl font-bold text-gray-900">Saya</h1>
+          </div>
+          <Button
+            onClick={handleNewVault}
+            className="bg-indigo-600 hover:bg-indigo-700"
           >
-            <img
-              src="https://img.icons8.com/ios-glyphs/90/000000/folder-invoices--v1.png"
-              alt="folder icon"
-              className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2"
-            />
-            <p className="text-center">{folder.name}</p>
-            {folder.isOwner && <p className="text-xs text-center text-gray-500">Owner</p>}
-            {!folder.isOwner && <p className="text-xs text-center text-gray-500">Shared</p>}
-          </div>
-        ))}
+            <Plus className="mr-2 h-4 w-4" />
+            New Vault
+          </Button>
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
+          {folders.map((folder) => (
+            <motion.div
+              key={folder.id}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Card className="bg-white/50 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <Folder className="w-10 h-10 text-indigo-600" />
+                        <Lock className="w-4 h-4 text-indigo-600 absolute -bottom-1 -right-1 bg-white rounded-xl" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-gray-900">{folder.name}</h2>
+                        <p className="text-sm text-gray-500">{folder.photoCount || 0} photos</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Button
+                      onClick={() => handleFolderClick(folder)}
+                      className="w-full bg-white hover:bg-gray-50"
+                      variant="outline"
+                    >
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Open Vault
+                    </Button>
+                    <Button
+                      onClick={() => handleAddToFolder(folder)}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Add Photos
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        <UploadDialog
+          isOpen={showUploadDialog}
+          onClose={() => {
+            setShowUploadDialog(false);
+            setSelectedFolder(null);
+          }}
+          onUploadComplete={() => fetchFolders(auth.currentUser.uid)}
+          selectedFolder={selectedFolder}
+        />
       </div>
-
-      {selectedFolder && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white p-6 rounded shadow-lg relative">
-            <button onClick={closePasscodePopup} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
-              ✕
-            </button>
-            <h2 className="text-xl mb-4">Enter Passcode for {selectedFolder.name}</h2>
-            <input
-              type="password"
-              className="border p-2 mb-4 w-full"
-              placeholder="Passcode"
-              value={enteredPasscode}
-              onChange={(e) => setEnteredPasscode(e.target.value)}
-            />
-            <button onClick={handlePasscodeSubmit} className="bg-green-500 text-white py-2 px-4 rounded">
-              Submit
-            </button>
-            {error && <p className="text-red-500 mt-2">{error}</p>}
-          </div>
-        </div>
-      )}
-
-      {showImages && selectedFolder && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4">
-          <div className="bg-white p-6 rounded shadow-lg relative max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-            <button onClick={closeImagesPopup} className="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
-              ✕
-            </button>
-            <h2 className="text-xl mb-4">{selectedFolder.name} - Images</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {selectedFolder.photos.map((photo, index) => (
-                <img key={index} src={photo} alt={`Photo ${index + 1}`} className="w-full h-auto rounded shadow" />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showPopup && <UploadPopup setShowPopup={setShowPopup} addFolder={addFolder} />}
-
-      <SearchPopup
-        isOpen={showSearchPopup}
-        onClose={() => setShowSearchPopup(false)}
-        onFolderSelect={handleSearchFolderSelect}
-      />
     </div>
   );
 };
 
-export default MainPage;
+export default PhotoVaultHome;
