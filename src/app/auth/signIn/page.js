@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useState, useEffect } from 'react';
+import { signInWithEmailAndPassword, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/app/firebase.config';
 import { useRouter } from 'next/navigation';
 import Cookies from 'universal-cookie';
@@ -14,13 +14,30 @@ const SignIn = () => {
   const router = useRouter();
   const cookies = new Cookies();
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        cookies.set('isAuthenticated', true, {
+          path: '/',
+          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60 // 7 days
+        });
+        router.push('/home');
+      }
+    });
+
+    return () => unsubscribe();
+  }, [router]);
+
   const handleSignIn = async (e) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
+    
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      cookies.set('isAuthenticated', true);
-      router.push('/home');
+      // Cookie is set in the onAuthStateChanged listener
     } catch (err) {
       setError(err.message);
     } finally {

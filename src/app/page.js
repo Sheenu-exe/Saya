@@ -4,23 +4,63 @@ import { motion } from 'framer-motion';
 import { Lock, Shield, Cloud, Image, ChevronRight } from 'lucide-react';
 import Cookies from "universal-cookie";
 import { useRouter } from "next/navigation";
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/app/firebase.config';
 
 const SayaLanding = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    const cookies = new Cookies();
-    var authStatus = cookies.get("isAuthenticated");
-    setIsAuthenticated(authStatus);
-    if (authStatus === true) {
-      router.push("/");
-    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const cookies = new Cookies();
+      
+      if (user) {
+        cookies.set('isAuthenticated', true, {
+          path: '/',
+          sameSite: 'strict',
+          secure: process.env.NODE_ENV === 'production',
+          maxAge: 7 * 24 * 60 * 60 // 7 days
+        });
+        setIsAuthenticated(true);
+        router.push("/home");
+      } else {
+        cookies.remove('isAuthenticated', { path: '/' });
+        setIsAuthenticated(false);
+      }
+    });
+
+    return () => unsubscribe();
   }, [router]);
+
+  const renderAuthButton = () => {
+    if (isAuthenticated) {
+      return (
+        <motion.a 
+          href="/home"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="px-8 py-3 bg-white hover:bg-gray-50 text-indigo-600 rounded-md font-medium border border-indigo-200 flex items-center justify-center gap-2"
+        >
+          Go to Dashboard
+        </motion.a>
+      );
+    }
+    
+    return (
+      <motion.a 
+        href="/auth/signIn"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="px-8 py-3 bg-white hover:bg-gray-50 text-indigo-600 rounded-md font-medium border border-indigo-200 flex items-center justify-center gap-2"
+      >
+        Sign In
+      </motion.a>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      {/* Hero Section */}
       <div className="relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
           <motion.div
@@ -54,19 +94,11 @@ const SayaLanding = () => {
                 <ChevronRight className="w-4 h-4" />
               </motion.a>
               
-              <motion.a 
-                href={isAuthenticated ? "/home" : "/auth/signIn"}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="px-8 py-3 bg-white hover:bg-gray-50 text-indigo-600 rounded-md font-medium border border-indigo-200 flex items-center justify-center gap-2"
-              >
-                {isAuthenticated ? "Go to Dashboard" : "Sign In"}
-              </motion.a>
+              {renderAuthButton()}
             </div>
           </motion.div>
         </div>
       </div>
-
       {/* Features Section */}
       <div className="py-24 bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
