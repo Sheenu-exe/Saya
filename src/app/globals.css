@@ -3,14 +3,19 @@
 @tailwind utilities;
 
 
-
 @font-face {
   font-family: Auliare;
   src: url('./fonts/Gilroy-Regular.ttf');
+}
+@font-face {
+  font-family:JetBrains;
+  src: url('./fonts/JetBrains.ttf');
 }
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: Auliare
 }
-
+.JetBrains-Mono {
+  font-family:JetBrains;
+}

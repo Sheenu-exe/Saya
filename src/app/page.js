@@ -2,10 +2,13 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, Shield, Cloud, Image, ChevronRight } from 'lucide-react';
-import Cookies from "universal-cookie";
+import Cookies from 'universal-cookie';
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/app/firebase.config';
+import { FaInstagram, FaLinkedin, FaXTwitter } from "react-icons/fa6";
+import { GiSpiderWeb } from "react-icons/gi";
+
 
 const SayaLanding = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -20,7 +23,7 @@ const SayaLanding = () => {
           path: '/',
           sameSite: 'strict',
           secure: process.env.NODE_ENV === 'production',
-          maxAge: 7 * 24 * 60 * 60 // 7 days
+          maxAge: 7 * 24 * 60 * 60
         });
         setIsAuthenticated(true);
         router.push("/home");
@@ -62,7 +65,8 @@ const SayaLanding = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
       <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        {/* Increased horizontal padding in container */}
+        <div className="max-w-6xl mx-auto px-8 sm:px-16 lg:px-24 pt-20 pb-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -99,9 +103,10 @@ const SayaLanding = () => {
           </motion.div>
         </div>
       </div>
-      {/* Features Section */}
+
+      {/* Features Section with increased padding */}
       <div className="py-24 bg-white/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-8 sm:px-16 lg:px-24">
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -150,9 +155,9 @@ const SayaLanding = () => {
         </div>
       </div>
 
-      {/* Call to Action Section */}
+      {/* Call to Action Section with increased padding */}
       <div className="py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-8 sm:px-16 lg:px-24">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -179,6 +184,59 @@ const SayaLanding = () => {
           </motion.div>
         </div>
       </div>
+      <footer className="bg-gradient-to-t from-indigo-50 to-white py-8">
+  <div className="max-w-6xl mx-auto px-8 sm:px-16 lg:px-24 text-center">
+    <p className="text-gray-600 JetBrains-Mono tracking-tighter text-sm mb-4">
+      Created with ❤️ by{" "}
+      <a
+        href="https://sachin10.vercel.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+      >
+        Sachin Parihar
+      </a>
+    </p>
+    <div className="flex justify-center items-center gap-4">
+      <a
+        className="text-gray-500 hover:text-indigo-600 hover:scale-105 transition-transform"
+        href="https://sachin10.vercel.app/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <GiSpiderWeb className="w-6 h-6" />
+      </a>
+      <a
+        className="text-blue-700 hover:text-blue-900 hover:scale-105 transition-transform"
+        href="https://www.linkedin.com/in/sachin-parihar-008180264/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <FaLinkedin className="w-6 h-6" />
+      </a>
+      <a
+        className="text-pink-500 hover:text-pink-700 hover:scale-105 transition-transform"
+        href="https://www.instagram.com/sachinn.code/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <FaInstagram className="w-6 h-6" />
+      </a>
+      <a
+        className="text-gray-500 hover:text-zinc-900 hover:scale-105 transition-transform"
+        href="https://x.com/Sheenu-exe"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <FaXTwitter className="w-6 h-6" />
+      </a>
+    </div>
+    <p className="text-gray-500 JetBrains-Mono text-xs mt-4">
+      © {new Date().getFullYear()} Saya. All rights reserved.
+    </p>
+  </div>
+</footer>
+
     </div>
   );
 };
