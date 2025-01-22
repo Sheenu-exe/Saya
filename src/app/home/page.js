@@ -6,14 +6,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Lock, Upload, X, Eye, Folder, Plus, FolderOpen } from "lucide-react";
-import { onAuthStateChanged } from 'firebase/auth';
+import { Lock, Upload, X, Eye, Folder, Plus, FolderOpen, LogOut } from "lucide-react";
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, query, where, getDocs, addDoc, getDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { auth, firestore, storage } from '../firebase.config';
 import { useRouter } from 'next/navigation';
 import bcrypt from 'bcryptjs';
-
+import Cookies from 'universal-cookie';
 // Upload Dialog Component
 const UploadDialog = ({ isOpen, onClose, onUploadComplete, selectedFolder = null }) => {
   const [files, setFiles] = useState([]);
@@ -194,6 +194,7 @@ const PhotoVaultHome = () => {
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const router = useRouter();
+  const cookies = new Cookies();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -207,6 +208,18 @@ const PhotoVaultHome = () => {
 
     return () => unsubscribe();
   }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      cookies.remove('isAuthenticated', { path: '/' });
+      router.push('/');
+    } catch (error) {
+      console.error('Logout error:', error);
+      setError('Error logging out');
+    }
+  };
+
 
   const fetchFolders = async (userId) => {
     try {
@@ -261,13 +274,23 @@ const PhotoVaultHome = () => {
             <Lock className="w-8 h-8 text-indigo-600" />
             <h1 className="text-2xl font-bold text-gray-900">Saya</h1>
           </div>
-          <Button
-            onClick={handleNewVault}
-            className="bg-indigo-600 hover:bg-indigo-700"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Vault
-          </Button>
+          <div className="flex items-center gap-4">
+            <Button
+              onClick={handleNewVault}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Vault
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         {error && (
