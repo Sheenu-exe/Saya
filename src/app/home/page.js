@@ -277,18 +277,18 @@ const PhotoVaultHome = () => {
           <div className="flex items-center gap-4">
             <Button
               onClick={handleNewVault}
-              className="bg-indigo-600 hover:bg-indigo-700"
+              className="bg-indigo-600 text-white hover:bg-indigo-700 flex justify-center items-center"
             >
               <Plus className="mr-2 h-4 w-4" />
-              New Vault
+             <p className='hidden sm:block'>New Vault</p>
             </Button>
             <Button
               onClick={handleLogout}
               variant="outline"
-              className="border-red-200 text-red-600 hover:bg-red-50"
+              className="border-red-200 text-red-600 hover:bg-red-50 flex justify-center items-center"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              <p className='hidden sm:block'>Logout</p>
             </Button>
           </div>
         </div>
