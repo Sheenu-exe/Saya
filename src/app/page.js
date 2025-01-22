@@ -78,9 +78,9 @@ const SayaLanding = () => {
               <h1 className="text-2xl font-bold text-gray-900">Saya</h1>
             </div>
             
-            <h2 className="text-5xl font-extrabold tracking-tighter text-gray-900 mb-6">
+            <h2 className="text-5xl tracking-tighter text-gray-900 mb-6">
               Welcome to Saya
-              <span className="text-indigo-600 block">Making Memories</span>
+              <span className="text-indigo-600 tracking-tight font-extrabold text-4xl block">Making Memories</span>
             </h2>
             
             <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
